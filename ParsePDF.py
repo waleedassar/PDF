@@ -23,6 +23,10 @@ def SplitPDFIntoLines(PDFCon):
         i = i + 1
     return NewList
 
+
+
+
+
 if len(sys.argv)!=2:
     print "Usage: ParsePDF.py input.pdf\r\n"
     sys.exit(-1)
@@ -70,7 +74,28 @@ if fCon_t_t != "%%EOF":
             elif Con_t_t_.upper()=="%%EOF":
                 print "Warning: Trailler is not all in Caps and is padded with whitespace character(s)"
                 
-            
+
+Header = Lines[0]
+Version = Header[5:]
+print "PDF Version: " + Version
+if Version[0]!="1" or Version.find(".")==-1:
+    print "PDF version is not in the form of 1.N"
+
+
+
+
+    
+#Check for test Binary Data
+BinaryData = ""
+LineAfterHeader = Lines[1]
+if LineAfterHeader[0]=="%":
+    BinaryData = LineAfterHeader[1:]
+    try:
+        #Print HexDump Here
+    except:
+        print "hexdump is needed to print hexdump"
+
+
 
 
 
