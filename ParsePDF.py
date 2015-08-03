@@ -1,6 +1,38 @@
-import os,sys,time,struct
+import os,sys,time,struct,re
 
 #-------------------- Start of func definitions here ----------------
+def ExtractSizeFromTrailerDictionary(Trailer):
+    if Trailer == "" or len(Trailer) == 0:
+        return 0
+    Segments = Trailer.split("/")
+    NumSegments = len(Segments)
+    if NumSegments == 0:
+        return 0
+    for i in range(0,NumSegments):
+        SegX = Segments[i].rstrip().lstrip()
+        SegXX = SegX[0:4]
+        if SegXX.lower()=="size":
+            Size = SegX[4:].lstrip().rstrip()
+            try:
+                Size_i = int(Size)
+            except:
+                Size_i = 0
+            return Size_i
+    
+#Converts the SubPDF from List into string stripped from leading and
+#trailing whitespace characters
+def CompactSubPDF(subPDF):
+    if subPDF == "" or len(subPDF) == 0:
+        return ""
+    newSubPDF = ""
+    NumLines = len(subPDF)
+    for i in range(0,NumLines):
+        Line = subPDF[i]
+        Line = Line.lstrip().rstrip()
+        if Line != "":
+            newSubPDF += Line
+    return newSubPDF
+
 def SplitPDFIntoLines(PDFCon):
     NewList = []
     if PDFCon == "" or len(PDFCon)==0:
@@ -35,6 +67,35 @@ def IsValidBinaryData(BinaryData):
         if xBinx < 128:
             return False
     return True
+
+def SplitPDFLinesIntoSubPDFs(AllPDFLines):
+    NewList = []
+    if AllPDFLines == "" or len(AllPDFLines)==0:
+        return []
+    NumLines = len(AllPDFLines)
+    if NumLines == 0:
+        return []
+    FirstFound = False
+    i = 0
+    while i < NumLines:
+        N = []
+        if Lines[i].startswith("%PDF-") == True or FirstFound == True:
+            N.append(Lines[i])
+            c = i + 1
+            while c < NumLines:
+                if Lines[c] == "%%EOF":
+                    N.append(Lines[c])
+                    break
+                N.append(Lines[c])
+                c = c + 1
+            if Lines[i].startswith("%PDF-") == True:
+                FirstFound = True
+            NewList.append(N)
+            i = c + 1
+    return NewList
+            
+
+    
 #-------------------- End of func definitions here -----------------
 
 if len(sys.argv)!=2:
@@ -117,7 +178,7 @@ if LineAfterHeader[0]=="%":
 
 
 
-#find xref tables, all sections of all updates
+#find xref table, all sections of all updates
 startxrefs = []
 for iii in range(0,Updates):
     XXX = UpdateIndices[iii]
@@ -134,6 +195,11 @@ for iii in range(0,Updates):
     else:
         del UpdateIndices[iii]
 
+Updates_ = len(UpdateIndices)
+if Updates_ != Updates:
+    print "Warning: number of PDF updates decreased from " + str(Updates) + " to " + str(Updates_)
+    Updates = Updates_
+
 xref_offsets = []
 for iiii in range(0,len(startxrefs)):
     offsetX = int(Lines[startxrefs[iiii]+1])
@@ -141,10 +207,43 @@ for iiii in range(0,len(startxrefs)):
         print "Warning: An xref Section was found to be out of file boundaries"
     xref_offsets.append(offsetX)
 
-print "xref section(s) were found at offset(s) " + str(xref_offsets)
+NumXRefSections = len(xref_offsets)
+print str(NumXRefSections) + " xref section(s) were found at offset(s) " + str(xref_offsets)
+
+
+#Slice PDF into subPDFs i.e. main PDF + its update PDFs
+subPDFs = SplitPDFLinesIntoSubPDFs(Lines)
 
         
-#find "Trailer"s
+#Process all PDF updates (subPDFs) to get all "Trailer Dictionaries"
+TrailerDicts = []
+for iii in range(0,Updates):
+    SubPDF_str = CompactSubPDF(subPDFs[iii])
+    re_trailer_lst = re.findall("trailer<<((.*?)+)>>",SubPDF_str,re.I)
+    re_trailer_tpl = re_trailer_lst[0]
+    if len(re_trailer_tpl) >= 2:
+        trailer = re_trailer_tpl[len(re_trailer_tpl)-2]
+        print trailer
+        TrailerDicts.append(trailer)
+    
 
+TotalNumberOfXrefEntries = 0
+if len(TrailerDicts) == 1:
+    TotalNumberOfXrefEntries = ExtractSizeFromTrailerDictionary(TrailerDicts[0])
+elif len(TrailerDicts) > 1:
+    TotalNumberOfXrefEntries = ExtractSizeFromTrailerDictionary(TrailerDicts[-1])
+           
+#Make sure last PDF Update has the highest "Size"
+iii = Updates
+if Updates != 0:
+    iii = iii - 1
 
+LastSize = 0
+while iii >= 0:
+    currSize = ExtractSizeFromTrailerDictionary(TrailerDicts[iii])
+    #print currSize
+    if currSize < LastSize:
+        print "Warning: \"Size\" found in current PDF Update Trailer Dictionary is less than that of the preceding PDF Update"
+    iii = iii - 1
 
+print "Total number of XREF entries is " + str(TotalNumberOfXrefEntries)
