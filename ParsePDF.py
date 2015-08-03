@@ -1,6 +1,121 @@
-import os,sys,time,struct,re
+import os,sys,time,struct,string,re
 
 #-------------------- Start of func definitions here ----------------
+def GetMyPrintables():
+    Printables = string.printable
+    NewPrintables = ""
+    lenPrintables = len(Printables)
+    for i in range(0,lenPrintables):
+        if ord(Printables[i]) >= 9 and ord(Printables[i]) <= 13:
+            pass
+        else:
+            NewPrintables += Printables[i]
+    return NewPrintables
+
+def GetHexDumpStr(XXX):
+    Printables = GetMyPrintables()
+    if XXX == "":
+        return ""
+    lenX = len(XXX)
+    if lenX == 0:
+        return ""
+    NewConn = ""
+    i = 0
+    while i < lenX:
+        XX = XXX[i]
+        if Printables.find(XX)==-1:
+            NewConn += "."
+        else:
+            NewConn += XX
+        i = i + 1
+    return NewConn
+
+def HexDump(Binary,Size=2,Sep=" "):
+    if Binary == "":
+        return ""
+    lenX = len(Binary)
+    if lenX == 0:
+        return ""
+    i = 0
+    FinalCon = ""
+    RawCon = ""
+    HexCon = ""
+    StrCon = ""
+    c = 0
+    d = 0
+    while i < lenX:
+        X = Binary[i]
+        RawCon += X
+        XX = struct.unpack("B",X)[0]
+        XXX = (hex(XX))[2:]
+        if len(XXX)==1:
+            XXX = "0" + XXX
+        HexCon += XXX
+        c = c + 1
+        HexCon += Sep
+        if c == 8:
+            HexCon += Sep
+            c = 0
+        d = d + 1
+        if d == 16 or i == lenX-1:
+            StrCon = GetHexDumpStr(RawCon)
+            if len(StrCon) < 16:
+                ToAdd = 16 - len(StrCon)
+                StrCon += (" "*ToAdd)
+            RawCon = ""
+            if len(HexCon) < 51:
+                ToAdd = 51-len(HexCon)
+                HexCon += (" "*ToAdd)
+            FinalCon += HexCon
+            HexCon = ""
+            FinalCon += " "
+            FinalCon += StrCon
+            StrCon = ""
+            FinalCon += "\r\n"
+            d = 0
+        i = i + 1
+    return FinalCon
+
+#Removes double spaces and tabs, every tab will be replaced with space 
+def RemoveDoubleSpacesAndTabs(StrXX):
+    if StrXX == 0 or len(StrXX)==0:
+        return ""
+    lenXX = len(StrXX)
+    iu = 0
+    NewStrX = ""
+    while iu < lenXX:
+        if StrXX[iu] == "\t" or StrXX[iu] == " ":
+            while iu < lenXX and (StrXX[iu]=="\t" or StrXX[iu]==" "):
+                iu = iu + 1
+            NewStrX += " "
+            continue
+        else:
+            NewStrX += StrXX[iu]
+        iu = iu + 1
+    return NewStrX
+
+def ExtractFileIdentifierFromTrailerDictionary(Trailer):
+    if Trailer == "" or len(Trailer)==0:
+        return []
+    Segments = Trailer.split("/")
+    NumSegments = len(Segments)
+    if NumSegments == 0:
+        return []
+    for i in range(0,NumSegments):
+        SegX = Segments[i].rstrip().lstrip()
+        SegXX = SegX[0:2]
+        if SegXX.upper()=="ID":
+            SegY = SegX[2:]
+            IdHashes = re.findall("([0-9a-fA-F]{32})",SegY)
+            NumIdHashes = len(IdHashes)
+            if NumIdHashes == 2:
+                FileId = []
+                FileId.append(IdHashes[0])
+                FileId.append(IdHashes[1])
+                return FileId
+
+    return []
+            
 def ExtractSizeFromTrailerDictionary(Trailer):
     if Trailer == "" or len(Trailer) == 0:
         return 0
@@ -174,7 +289,7 @@ if LineAfterHeader[0]=="%":
     retB = IsValidBinaryData(BinaryData)
     if retB == False:
         print "Warning: Binary comment line contains invalid bytes ( each byte must be 128 or greater )"
-    #Print HexDump Here
+    print "Test Binary Data ==> " + HexDump(BinaryData)
 
 
 
@@ -233,6 +348,7 @@ if len(TrailerDicts) == 1:
 elif len(TrailerDicts) > 1:
     TotalNumberOfXrefEntries = ExtractSizeFromTrailerDictionary(TrailerDicts[-1])
            
+#Get total number of xref entries in all sections of the XREF table
 #Make sure last PDF Update has the highest "Size"
 iii = Updates
 if Updates != 0:
@@ -247,3 +363,29 @@ while iii >= 0:
     iii = iii - 1
 
 print "Total number of XREF entries is " + str(TotalNumberOfXrefEntries)
+
+#Extract all File Identifiers
+FileIDs = []
+for iii in range(0,Updates):
+    FileId = ExtractFileIdentifierFromTrailerDictionary(TrailerDicts[iii])
+    FileIDs.append(FileId)
+    if FileId != []:
+        print "MajorFileId: " + FileId[0]
+        print "MinorFileId: " + FileId[1] + "\r\n"
+
+#Some sanity checks on File Identifiers
+NumFileIDs = len(FileIDs)
+OriginalFound = False
+for iii in range(0,NumFileIDs):
+    currFileId_l = FileIDs[iii]
+    if currFileId_l != []:
+        Major = currFileId_l[0]
+        Minor = currFileId_l[1]
+        if Major == Minor:
+            OriginalFound = True
+        if iii > 0 and FileIDs[iii-1] != []:
+            if Major != FileIDs[iii-1][0]:
+                print "Warning: Major File Identifier is not constant across all updates"
+if OriginalFound == False:
+    print "Warning: Original File Identifier was not found"
+
