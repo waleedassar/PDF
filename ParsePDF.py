@@ -94,6 +94,59 @@ def RemoveDoubleSpacesAndTabs(StrXX):
         iu = iu + 1
     return NewStrX
 
+
+#returns 0 on error
+def ExtractPrevOffsetFromTrailerDictionary(Trailer):
+    if Trailer == "" or len(Trailer)==0:
+        return 0
+    Segments = Trailer.split("/")
+    NumSegments = len(Segments)
+    if NumSegments == 0:
+        return 0
+    for i in range(0,NumSegments):
+        SegX = Segments[i].rstrip().lstrip()
+        SegXX = SegX[0:4]
+        if SegXX.upper()=="PREV":
+            SegY = SegX[4:].rstrip().lstrip()
+            if SegY != "":
+                if SegY.isdigit()==True:
+                    return int(SegY)
+    return 0
+
+def ExtractInfoDictionaryFromTrailerDictionary(Trailer):
+    if Trailer == "" or len(Trailer)==0:
+        return ""
+    Segments = Trailer.split("/")
+    NumSegments = len(Segments)
+    if NumSegments == 0:
+        return ""
+    for i in range(0,NumSegments):
+        SegX = Segments[i].rstrip().lstrip()
+        SegXX = SegX[0:4]
+        if SegXX.upper()=="INFO":
+            SegY = SegX[4:].rstrip().lstrip()
+            if SegY != "":
+                return SegY
+    return ""
+
+
+def ExtractCatalogDictionaryFromTrailerDictionary(Trailer):
+    if Trailer == "" or len(Trailer)==0:
+        return ""
+    Segments = Trailer.split("/")
+    NumSegments = len(Segments)
+    if NumSegments == 0:
+        return ""
+    for i in range(0,NumSegments):
+        SegX = Segments[i].rstrip().lstrip()
+        SegXX = SegX[0:4]
+        if SegXX.upper()=="ROOT":
+            SegY = SegX[4:].rstrip().lstrip()
+            if SegY != "":
+                return SegY
+    return ""
+
+
 def ExtractFileIdentifierFromTrailerDictionary(Trailer):
     if Trailer == "" or len(Trailer)==0:
         return []
@@ -113,7 +166,6 @@ def ExtractFileIdentifierFromTrailerDictionary(Trailer):
                 FileId.append(IdHashes[0])
                 FileId.append(IdHashes[1])
                 return FileId
-
     return []
             
 def ExtractSizeFromTrailerDictionary(Trailer):
@@ -329,9 +381,9 @@ print str(NumXRefSections) + " xref section(s) were found at offset(s) " + str(x
 #Slice PDF into subPDFs i.e. main PDF + its update PDFs
 subPDFs = SplitPDFLinesIntoSubPDFs(Lines)
 
-        
-#Process all PDF updates (subPDFs) to get all "Trailer Dictionaries"
 TrailerDicts = []
+
+#Process all PDF updates (subPDFs) to get all "Trailer Dictionaries"
 for iii in range(0,Updates):
     SubPDF_str = CompactSubPDF(subPDFs[iii])
     re_trailer_lst = re.findall("trailer<<((.*?)+)>>",SubPDF_str,re.I)
@@ -366,6 +418,7 @@ print "Total number of XREF entries is " + str(TotalNumberOfXrefEntries)
 
 #Extract all File Identifiers
 FileIDs = []
+
 for iii in range(0,Updates):
     FileId = ExtractFileIdentifierFromTrailerDictionary(TrailerDicts[iii])
     FileIDs.append(FileId)
@@ -389,3 +442,30 @@ for iii in range(0,NumFileIDs):
 if OriginalFound == False:
     print "Warning: Original File Identifier was not found"
 
+#Extract locations of all "Catalog Dictionaries"
+CatalogLocations = [] #38 0 R    ==> str
+CatalogEntries = []   #38        ==> int
+for iii in range(0,Updates):
+    CatalogDictLocation = ExtractCatalogDictionaryFromTrailerDictionary(TrailerDicts[iii])
+    print CatalogDictLocation
+    CatalogLocations.append(CatalogDictLocation)
+    CatalogEntries.append(int((CatalogDictLocation.split(" "))[0]))
+
+#Extract locations of all "Information Dictionaries"
+InfoLocations = []
+InfoEntries = []
+for iii in range(0,Updates):
+    InfoDictLocation = ExtractInfoDictionaryFromTrailerDictionary(TrailerDicts[iii])
+    print InfoDictLocation
+    InfoLocations.append(InfoDictLocation)
+    InfoEntries.append(int((InfoDictLocation.split(" "))[0]))
+
+#Extract Prev
+#First/Main PDF has no "Prev" in its Trailer Dictionary, so it is always zero
+Prevs = []
+for iii in range(0,Updates):
+    Prev = ExtractPrevOffsetFromTrailerDictionary(TrailerDicts[iii])
+    print Prev
+    Prevs.append(Prev)
+
+Encrypted = [] #True or False
