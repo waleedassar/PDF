@@ -393,14 +393,68 @@ for iii in range(0,Updates):
         print trailer
         TrailerDicts.append(trailer)
     
-
+#Get total number of xref entries in all sections of the XREF table
 TotalNumberOfXrefEntries = 0
 if len(TrailerDicts) == 1:
     TotalNumberOfXrefEntries = ExtractSizeFromTrailerDictionary(TrailerDicts[0])
 elif len(TrailerDicts) > 1:
     TotalNumberOfXrefEntries = ExtractSizeFromTrailerDictionary(TrailerDicts[-1])
            
-#Get total number of xref entries in all sections of the XREF table
+print "Total number of XREF entries is " + str(TotalNumberOfXrefEntries)
+
+#-------------------------------------
+#All Sizes i.e. total number of entries in the whole xref table
+Sizes = []
+#All File Identifiers
+FileIDs = []
+
+#Locations of all "Catalog Dictionaries"
+CatalogLocations = [] #38 0 R    ==> str
+CatalogEntries = []   #38        ==> int
+
+#Locations of all "Information Dictionaries"
+InfoLocations = []
+InfoEntries = []
+
+#Previous
+#First/Main PDF has no "Prev" in its Trailer Dictionary, so it is always zero
+Prevs = []
+
+#True or False
+Encrypted = [] 
+
+for iii in range(0,Updates):
+    print "--------------------------------------------"
+    SIze = ExtractSizeFromTrailerDictionary(TrailerDicts[iii])
+    Sizes.append(SIze)
+    print "Size: " + str(SIze)
+    print "---------------------"
+    FileId = ExtractFileIdentifierFromTrailerDictionary(TrailerDicts[iii])
+    FileIDs.append(FileId)
+    if FileId != []:
+        print "MajorFileId: " + FileId[0]
+        print "MinorFileId: " + FileId[1] + "\r\n"
+    else:
+        print "MajorFileId: N/A"
+        print "MinorFileId: N/A\r\n"
+    print "---------------------"
+    CatalogDictLocation = ExtractCatalogDictionaryFromTrailerDictionary(TrailerDicts[iii])
+    CatalogLocations.append(CatalogDictLocation)
+    CatalogEntries.append(int((CatalogDictLocation.split(" "))[0]))
+    print "Catalog Dictionary: " + CatalogDictLocation
+    print "---------------------"
+    InfoDictLocation = ExtractInfoDictionaryFromTrailerDictionary(TrailerDicts[iii])
+    InfoLocations.append(InfoDictLocation)
+    InfoEntries.append(int((InfoDictLocation.split(" "))[0]))
+    print "Information Dictionary: " + InfoDictLocation
+    print "---------------------"
+    Prev = ExtractPrevOffsetFromTrailerDictionary(TrailerDicts[iii])
+    Prevs.append(Prev)
+    print "Previous: " + str(Prev)
+    print "--------------------------------------------"
+
+#Some sanity checks
+
 #Make sure last PDF Update has the highest "Size"
 iii = Updates
 if Updates != 0:
@@ -409,22 +463,9 @@ if Updates != 0:
 LastSize = 0
 while iii >= 0:
     currSize = ExtractSizeFromTrailerDictionary(TrailerDicts[iii])
-    #print currSize
     if currSize < LastSize:
         print "Warning: \"Size\" found in current PDF Update Trailer Dictionary is less than that of the preceding PDF Update"
     iii = iii - 1
-
-print "Total number of XREF entries is " + str(TotalNumberOfXrefEntries)
-
-#Extract all File Identifiers
-FileIDs = []
-
-for iii in range(0,Updates):
-    FileId = ExtractFileIdentifierFromTrailerDictionary(TrailerDicts[iii])
-    FileIDs.append(FileId)
-    if FileId != []:
-        print "MajorFileId: " + FileId[0]
-        print "MinorFileId: " + FileId[1] + "\r\n"
 
 #Some sanity checks on File Identifiers
 NumFileIDs = len(FileIDs)
@@ -442,30 +483,10 @@ for iii in range(0,NumFileIDs):
 if OriginalFound == False:
     print "Warning: Original File Identifier was not found"
 
-#Extract locations of all "Catalog Dictionaries"
-CatalogLocations = [] #38 0 R    ==> str
-CatalogEntries = []   #38        ==> int
-for iii in range(0,Updates):
-    CatalogDictLocation = ExtractCatalogDictionaryFromTrailerDictionary(TrailerDicts[iii])
-    print CatalogDictLocation
-    CatalogLocations.append(CatalogDictLocation)
-    CatalogEntries.append(int((CatalogDictLocation.split(" "))[0]))
 
-#Extract locations of all "Information Dictionaries"
-InfoLocations = []
-InfoEntries = []
-for iii in range(0,Updates):
-    InfoDictLocation = ExtractInfoDictionaryFromTrailerDictionary(TrailerDicts[iii])
-    print InfoDictLocation
-    InfoLocations.append(InfoDictLocation)
-    InfoEntries.append(int((InfoDictLocation.split(" "))[0]))
 
-#Extract Prev
-#First/Main PDF has no "Prev" in its Trailer Dictionary, so it is always zero
-Prevs = []
-for iii in range(0,Updates):
-    Prev = ExtractPrevOffsetFromTrailerDictionary(TrailerDicts[iii])
-    print Prev
-    Prevs.append(Prev)
 
-Encrypted = [] #True or False
+
+
+
+
