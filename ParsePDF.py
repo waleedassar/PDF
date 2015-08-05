@@ -95,6 +95,7 @@ def RemoveDoubleSpacesAndTabs(StrXX):
     return NewStrX
 
 
+
 #returns 0 on error
 def ExtractPrevOffsetFromTrailerDictionary(Trailer):
     if Trailer == "" or len(Trailer)==0:
@@ -208,12 +209,16 @@ def SplitPDFIntoLines(PDFCon):
     i = 0
     CurrLine = ""
     while i < lenPDFCon:
-        if PDFCon[i]=="\r":
-            if i + 1 <= lenPDFCon:
-                if PDFCon[i+1]=="\n":
-                    i = i + 1
+        if i == lenPDFCon - 1:
+            if PDFCon[i]!="\r" and PDFCon[i]!="\n":
+                CurrLine += PDFCon[i]
+            NewList.append(CurrLine)
+        if PDFCon[i] == "\r":
             NewList.append(CurrLine)
             CurrLine = ""
+            if i + 1 <= lenPDFCon and PDFCon[i+1]=="\n":
+                i = i + 2
+                continue
         elif PDFCon[i]=="\n":
             NewList.append(CurrLine)
             CurrLine = ""
@@ -293,6 +298,8 @@ fIn = open(inF,"rb")
 fCon = fIn.read()
 fIn.close()
 
+
+
 #Split PDF into lines here
 Lines = SplitPDFIntoLines(fCon)
 
@@ -310,6 +317,7 @@ if fCon_t_t != "%%EOF":
                 print "Warning: Trailler is not all in Caps and is padded with whitespace character(s)"             
 
 NumLines = len(Lines)
+print Lines[NumLines-1]
 Updates = 0
 UpdateIndices = []
 for ii in range(0,NumLines):
@@ -459,13 +467,12 @@ for iii in range(0,Updates):
 iii = Updates
 if Updates != 0:
     iii = iii - 1
-
-LastSize = 0
-while iii >= 0:
-    currSize = ExtractSizeFromTrailerDictionary(TrailerDicts[iii])
-    if currSize < LastSize:
-        print "Warning: \"Size\" found in current PDF Update Trailer Dictionary is less than that of the preceding PDF Update"
-    iii = iii - 1
+    LastSize = 0
+    while iii >= 0:
+        currSize = ExtractSizeFromTrailerDictionary(TrailerDicts[iii])
+        if currSize < LastSize:
+            print "Warning: \"Size\" found in current PDF Update Trailer Dictionary is less than that of the preceding PDF Update"
+        iii = iii - 1
 
 #Some sanity checks on File Identifiers
 NumFileIDs = len(FileIDs)
@@ -486,7 +493,13 @@ if OriginalFound == False:
 
 
 
+#[0-9]{10}\s[0-9]{5}\s[f|n]
 
+#All xref sections
+xrefs = []
 
-
-
+for iii in range(0,NumXRefSections):
+    curr_xref_offset = xref_offsets[iii]
+    print curr_xref_offset
+    XuX = fCon[curr_xref_offset:curr_xref_offset+4]
+    print XuX
