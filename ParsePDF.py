@@ -216,7 +216,7 @@ def SplitPDFIntoLines(PDFCon):
         if PDFCon[i] == "\r":
             NewList.append(CurrLine)
             CurrLine = ""
-            if i + 1 <= lenPDFCon and PDFCon[i+1]=="\n":
+            if i + 1 < lenPDFCon and PDFCon[i+1]=="\n":
                 i = i + 2
                 continue
         elif PDFCon[i]=="\n":
@@ -283,7 +283,7 @@ if os.path.exists(inF)==False or \
 
 InFLen = os.path.getsize(inF)
 
-# Quick validity check
+#Quick validity check
 fIn_t = open(inF,"rb")
 fCon_t_h = fIn_t.read(5) #Read Header
 fIn_t.close()
@@ -447,14 +447,20 @@ for iii in range(0,Updates):
         print "MinorFileId: N/A\r\n"
     print "---------------------"
     CatalogDictLocation = ExtractCatalogDictionaryFromTrailerDictionary(TrailerDicts[iii])
-    CatalogLocations.append(CatalogDictLocation)
-    CatalogEntries.append(int((CatalogDictLocation.split(" "))[0]))
-    print "Catalog Dictionary: " + CatalogDictLocation
+    if CatalogDictLocation != "":
+        CatalogLocations.append(CatalogDictLocation)
+        CatalogEntries.append(int((CatalogDictLocation.split(" "))[0]))
+        print "Catalog Dictionary: " + CatalogDictLocation
+    else:
+        print "Catalog Dictionary: N/A"
     print "---------------------"
     InfoDictLocation = ExtractInfoDictionaryFromTrailerDictionary(TrailerDicts[iii])
-    InfoLocations.append(InfoDictLocation)
-    InfoEntries.append(int((InfoDictLocation.split(" "))[0]))
-    print "Information Dictionary: " + InfoDictLocation
+    if InfoDictLocation != "":
+        InfoLocations.append(InfoDictLocation)
+        InfoEntries.append(int((InfoDictLocation.split(" "))[0]))
+        print "Information Dictionary: " + InfoDictLocation
+    else:
+        print "Information Dictionary: N/A"
     print "---------------------"
     Prev = ExtractPrevOffsetFromTrailerDictionary(TrailerDicts[iii])
     Prevs.append(Prev)
