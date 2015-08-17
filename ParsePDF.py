@@ -213,6 +213,7 @@ def SplitPDFIntoLines(PDFCon):
             if PDFCon[i]!="\r" and PDFCon[i]!="\n":
                 CurrLine += PDFCon[i]
             NewList.append(CurrLine)
+            break
         if PDFCon[i] == "\r":
             NewList.append(CurrLine)
             CurrLine = ""
@@ -317,7 +318,7 @@ if fCon_t_t != "%%EOF":
                 print "Warning: Trailler is not all in Caps and is padded with whitespace character(s)"             
 
 NumLines = len(Lines)
-print Lines[NumLines-1]
+#print Lines[NumLines-1]  #Should be %%EOF
 Updates = 0
 UpdateIndices = []
 for ii in range(0,NumLines):
@@ -380,10 +381,12 @@ for iiii in range(0,len(startxrefs)):
     offsetX = int(Lines[startxrefs[iiii]+1])
     if offsetX >= InFLen:
         print "Warning: An xref Section was found to be out of file boundaries"
+    elif offsetX == 0:
+        print "Warning: An xref Section was found to be at offset zero i.e. no xref section"
     xref_offsets.append(offsetX)
 
 NumXRefSections = len(xref_offsets)
-print str(NumXRefSections) + " xref section(s) were found at offset(s) " + str(xref_offsets)
+print str(NumXRefSections) + " xref section(s) at offset(s) " + str(xref_offsets)
 
 
 #Slice PDF into subPDFs i.e. main PDF + its update PDFs
@@ -396,8 +399,10 @@ for iii in range(0,Updates):
     SubPDF_str = CompactSubPDF(subPDFs[iii])
     re_trailer_lst = re.findall("trailer<<((.*?)+)>>",SubPDF_str,re.I)
     re_trailer_tpl = re_trailer_lst[0]
+    
+    print re_trailer_tpl
     if len(re_trailer_tpl) >= 2:
-        trailer = re_trailer_tpl[len(re_trailer_tpl)-2]
+        trailer = re_trailer_tpl[len(re_trailer_tpl)-2] #i may need to change "-2" to "0", it takes more samples to test
         print trailer
         TrailerDicts.append(trailer)
     
@@ -409,7 +414,6 @@ elif len(TrailerDicts) > 1:
     TotalNumberOfXrefEntries = ExtractSizeFromTrailerDictionary(TrailerDicts[-1])
            
 print "Total number of XREF entries is " + str(TotalNumberOfXrefEntries)
-
 #-------------------------------------
 #All Sizes i.e. total number of entries in the whole xref table
 Sizes = []
@@ -432,7 +436,7 @@ Prevs = []
 Encrypted = [] 
 
 for iii in range(0,Updates):
-    print "--------------------------------------------"
+    print "XREF Section " + str(iii+1) + " --------------------------------"
     SIze = ExtractSizeFromTrailerDictionary(TrailerDicts[iii])
     Sizes.append(SIze)
     print "Size: " + str(SIze)
@@ -470,15 +474,16 @@ for iii in range(0,Updates):
 #Some sanity checks
 
 #Make sure last PDF Update has the highest "Size"
-iii = Updates
 if Updates != 0:
-    iii = iii - 1
-    LastSize = 0
-    while iii >= 0:
+    PrevSize = 0
+    iii = 0
+    while iii < Updates:
         currSize = ExtractSizeFromTrailerDictionary(TrailerDicts[iii])
-        if currSize < LastSize:
-            print "Warning: \"Size\" found in current PDF Update Trailer Dictionary is less than that of the preceding PDF Update"
-        iii = iii - 1
+        #print currSize
+        if currSize < PrevSize:
+            print "Warning: \"Size\" found in one PDF Update Trailer Dictionary is less than that of the preceding PDF Update"
+        PrevSize = currSize
+        iii = iii + 1
 
 #Some sanity checks on File Identifiers
 NumFileIDs = len(FileIDs)
@@ -498,14 +503,32 @@ if OriginalFound == False:
 
 
 
+print xref_offsets
 
 #[0-9]{10}\s[0-9]{5}\s[f|n]
 
 #All xref sections
+xref_offsets_u = [] #-1 will replace any buddy xref section
 xrefs = []
+b_XrefsNeedFixing = False
 
 for iii in range(0,NumXRefSections):
     curr_xref_offset = xref_offsets[iii]
-    print curr_xref_offset
-    XuX = fCon[curr_xref_offset:curr_xref_offset+4]
-    print XuX
+    #print curr_xref_offset
+    if curr_xref_offset != 0:
+        if  curr_xref_offset + 4 <= InFLen:
+            XuX = fCon[curr_xref_offset:curr_xref_offset+4]
+            if XuX != "xref":
+                print "xref section does not start with \"xref\" keyword, it needs to be fixed"
+                b_XrefsNeedFixing = True
+                xref_offsets_u.append(-1)
+            else:
+                xref_offsets_u.append(curr_xref_offset)
+        else:
+            print "Wanring: An xref Section was found to be out of file boundaries"
+            xref_offsets_u.append(-1)
+    else:
+        print "Warning: an XREF section claims to be at file offset 0"
+        xref_offsets_u.append(-1)
+
+print xref_offsets_u
